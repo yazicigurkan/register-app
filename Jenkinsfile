@@ -88,5 +88,31 @@
                }
           }
        }
+	stage('Update Manifest Repo for GitOps') {
+  steps {
+    script {
+      def repoUrl = 'https://github.com/yazicigurkan/register-app-manifests.git'
+      def repoDir = 'manifests-repo'
+      def newImage = "${IMAGE_NAME}:${IMAGE_TAG}"
+
+      withCredentials([usernamePassword(credentialsId: 'github', usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_TOKEN')]) {
+        sh """
+          git config --global user.email "jenkins@example.com"
+          git config --global user.name "Jenkins"
+
+          rm -rf ${repoDir}
+          git clone https://${GIT_USERNAME}:${GIT_TOKEN}@github.com/yazicigurkan/register-app-manifests.git ${repoDir}
+          
+          cd ${repoDir}
+          sed -i 's|image:.*|image: ${newImage}|' deployment.yaml
+          
+          git add deployment.yaml
+          git commit -m "Update image to ${newImage} [Jenkins CI]"
+          git push origin main
+        """
+      }
+    }
+  }
+}   
    }
  }
