@@ -90,22 +90,22 @@
        }
 	stage('Update Manifest Repo for GitOps') {
   steps {
-    script {
-      def repoUrl = 'https://github.com/yazicigurkan/register-app-manifests.git'
-      def repoDir = 'manifests-repo'
-      def newImage = "${IMAGE_NAME}:${IMAGE_TAG}"
+    withCredentials([string(credentialsId: 'github-manifest-token', variable: 'GITHUB_TOKEN')]) {
+      script {
+        def repoDir = "manifests-repo"
+        def repoUrl = "https://yazicigurkan:${GITHUB_TOKEN}@github.com/yazicigurkan/register-app-manifests.git"
+        def newImage = "${IMAGE_NAME}:${IMAGE_TAG}"  // örnek: grknyzc53/register-app-pipeline:1.0.0-13
 
-      withCredentials([usernamePassword(credentialsId: 'github', usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_TOKEN')]) {
         sh """
-          git config --global user.email "jenkins@example.com"
-          git config --global user.name "Jenkins"
+          git config --global user.email "gurkan.yazici.53@icloud.com"
+          git config --global user.name "yazicigurkan"
 
           rm -rf ${repoDir}
-          git clone https://${GIT_USERNAME}:${GIT_TOKEN}@github.com/yazicigurkan/register-app-manifests.git ${repoDir}
-          
+          git clone ${repoUrl} ${repoDir}
+
           cd ${repoDir}
           sed -i 's|image:.*|image: ${newImage}|' deployment.yaml
-          
+
           git add deployment.yaml
           git commit -m "Update image to ${newImage} [Jenkins CI]"
           git push origin main
@@ -113,6 +113,6 @@
       }
     }
   }
-}   
+}
    }
  }
