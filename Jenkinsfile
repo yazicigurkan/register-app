@@ -90,7 +90,7 @@
        }
 	stage('Update Manifest Repo for GitOps') {
   steps {
-    withCredentials([string(credentialsId: 'github-manifest-token', variable: 'GITHUB_TOKEN')]) {
+    withCredentials([string(credentialsId: 'jenkins-manifest-github-token', variable: 'GITHUB_TOKEN')]) {
       script {
         def repoDir = "manifests-repo"
         def repoUrl = "https://yazicigurkan:${GITHUB_TOKEN}@github.com/yazicigurkan/register-app-manifests.git"
