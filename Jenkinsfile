@@ -38,6 +38,11 @@ pipeline {
                  sh "mvn test"
            }
        }
+       stage("OWASP Dependency Check") {
+           steps {
+                 sh "mvn org.owasp:dependency-check-maven:check"
+           }
+       }	    
 
        stage("SonarQube Analysis"){
            steps {
