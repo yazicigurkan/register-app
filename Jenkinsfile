@@ -126,5 +126,22 @@ pipeline {
         }
       }
     }
+    stage("Trigger Argo CD Sync") {
+      steps {
+        withCredentials([string(credentialsId: 'argocd-api-token', variable: 'ARGOCD_TOKEN')]) {
+          script {
+            def appName = "register-app" // Argo CD uygulama adın
+            def argoUrl = "https://34.67.128.206/api/v1/applications/${appName}/sync"
+
+            sh """
+              curl -k -X POST \\
+              -H "Authorization: Bearer ${ARGOCD_TOKEN}" \\
+              -H "Content-Type: application/json" \\
+              ${argoUrl}
+            """
+          }
+        }
+      }
+    }
   }
 }
