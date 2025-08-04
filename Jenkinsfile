@@ -91,6 +91,31 @@ pipeline {
       }
     }
 
+    stage("OWASP ZAP Scan") {
+  steps {
+    sh '''
+      docker rm -f zap-scan || true
+      docker pull owasp/zap2docker-stable:latest
+      docker run --rm -d --name zap-scan -v $WORKSPACE:/zap/wrk owasp/zap2docker-stable:latest /bin/bash
+
+      if [ "${TARGET_URL:-http://localhost:8080}" = "APIS" ]; then
+        : #...
+      fi
+
+      docker exec zap-scan zap-baseline.py -t http://host.docker.internal:8080 \
+        -r zap_report.html -J zap_report.json
+
+      docker cp zap-scan:/zap/wrk/zap_report.html .
+      docker rm -f zap-scan || true
+    '''
+  }
+  post {
+    always {
+      archiveArtifacts artifacts: 'zap_report.html, zap_report.json', allowEmptyArchive: true
+    }
+  }
+}
+
     stage("Cleanup Artifacts") {
       steps {
         sh "docker rmi ${IMAGE_NAME}:${IMAGE_TAG} || true"
