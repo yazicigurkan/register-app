@@ -94,19 +94,14 @@ pipeline {
     stage("OWASP ZAP Scan") {
   steps {
     sh '''
-      docker rm -f zap-scan || true
       docker pull ghcr.io/zaproxy/zaproxy:stable
-      docker run --rm -d --name zap-scan -v $WORKSPACE:/zap/wrk ghcr.io/zaproxy/zaproxy:stable /bin/bash
 
-      if [ "${TARGET_URL:-http://localhost:8080}" = "APIS" ]; then
-        : #...
-      fi
-
-      docker exec zap-scan zap-baseline.py -t http://host.docker.internal:8080 \
+      docker run --rm \
+        --name zap-scan \
+        -v $WORKSPACE:/zap/wrk \
+        ghcr.io/zaproxy/zaproxy:stable \
+        zap-baseline.py -t http://host.docker.internal:8080 \
         -r zap_report.html -J zap_report.json
-
-      docker cp zap-scan:/zap/wrk/zap_report.html .
-      docker rm -f zap-scan || true
     '''
   }
   post {
