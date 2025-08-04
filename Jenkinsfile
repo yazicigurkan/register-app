@@ -95,8 +95,8 @@ pipeline {
   steps {
     sh '''
       docker rm -f zap-scan || true
-      docker pull owasp/zap2docker-stable:latest
-      docker run --rm -d --name zap-scan -v $WORKSPACE:/zap/wrk owasp/zap2docker-stable:latest /bin/bash
+      docker pull ghcr.io/zaproxy/zaproxy:stable
+      docker run --rm -d --name zap-scan -v $WORKSPACE:/zap/wrk ghcr.io/zaproxy/zaproxy:stable /bin/bash
 
       if [ "${TARGET_URL:-http://localhost:8080}" = "APIS" ]; then
         : #...
