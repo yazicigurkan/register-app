@@ -91,6 +91,44 @@ pipeline {
       }
     }
 
+        stage("OWASP ZAP DAST Scan") {
+      steps {
+        script {
+          // Uygulama container'ını başlat
+          sh """
+            docker run -d --name app-under-test -p 8080:8080 ${IMAGE_NAME}:${IMAGE_TAG}
+            sleep 15  # Uygulama ayağa kalksın diye biraz bekliyoruz
+          """
+
+          // ZAP taraması yap (JSON + HTML raporları oluşturulur)
+          sh """
+            docker run --rm \
+              --network host \
+              -v \$PWD:/zap/wrk/:rw \
+              owasp/zap2docker-stable zap-baseline.py \
+              -t http://localhost:8080 \
+              -r zap_report.html \
+              -J zap_report.json \
+              -m 0
+          """
+
+          // Raporu oku ve kritik açık varsa pipeline'ı durdur
+          def zapReport = readFile('zap_report.json')
+          if (zapReport.contains('"risk": "High"') || zapReport.contains('"risk": "Medium"')) {
+            error("OWASP ZAP taramasında Medium veya High seviyesinde açık bulundu. Pipeline durduruldu.")
+          } else {
+            echo "ZAP taramasında kritik açık bulunamadı. Devam ediliyor."
+          }
+        }
+      }
+      post {
+        always {
+          sh "docker rm -f app-under-test || true"
+          archiveArtifacts artifacts: 'zap_report.html', fingerprint: true
+        }
+      }
+    }
+
     stage("Cleanup Artifacts") {
       steps {
         sh "docker rmi ${IMAGE_NAME}:${IMAGE_TAG} || true"
