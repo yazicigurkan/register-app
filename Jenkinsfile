@@ -91,17 +91,20 @@ pipeline {
       }
     }
 
-    stage("OWASP ZAP Scan") {
+ stage("OWASP ZAP Scan") {
   steps {
     sh '''
       docker pull ghcr.io/zaproxy/zaproxy:stable
 
       docker run --rm \
-        --name zap-scan \
+        --user root \
         -v $WORKSPACE:/zap/wrk \
+        --network host \
         ghcr.io/zaproxy/zaproxy:stable \
-        zap-baseline.py -t http://host.docker.internal:8080 \
-        -r zap_report.html -J zap_report.json
+        zap-baseline.py \
+          -t http://localhost:8080 \
+          -r zap_report.html \
+          -J zap_report.json
     '''
   }
   post {
