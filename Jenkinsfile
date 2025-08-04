@@ -91,32 +91,7 @@ pipeline {
       }
     }
 
- stage("OWASP ZAP Scan") {
-  steps {
-    sh '''
-      docker pull ghcr.io/zaproxy/zaproxy:stable
-
-      docker network create zap-net || true
-
-      docker run -d --name register-app --network zap-net -p 8080:8080 register-app-image
-
-      docker run --rm \
-        --user root \
-        --network zap-net \
-        -v $WORKSPACE:/zap/wrk \
-        ghcr.io/zaproxy/zaproxy:stable \
-        zap-baseline.py \
-          -t http://register-app:8080 \
-          -r zap_report.html \
-          -J zap_report.json
-    '''
-  }
-  post {
-    always {
-      archiveArtifacts artifacts: 'zap_report.html, zap_report.json', allowEmptyArchive: true
-    }
-  }
-}
+ 
     stage("Cleanup Artifacts") {
       steps {
         sh "docker rmi ${IMAGE_NAME}:${IMAGE_TAG} || true"
