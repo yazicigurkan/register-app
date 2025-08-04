@@ -6,14 +6,14 @@
      jdk 'java17'
      maven 'maven3'
    }
-  environment {
-       APP_NAME = "register-app-pipeline"
-       RELEASE = "1.0.0"
-       DOCKER_USER = "grknyzc53"
-       DOCKER_PASS = 'dockerhub'
-       IMAGE_NAME = "${DOCKER_USER}" + "/" + "${APP_NAME}"
-       IMAGE_TAG = "${RELEASE}-${BUILD_NUMBER}"
-     }
+   environment {
+     APP_NAME = "register-app-pipeline"
+     RELEASE = "1.0.0"
+     DOCKER_USER = "grknyzc53"
+     DOCKER_PASS = 'dockerhub'
+     IMAGE_NAME = "${DOCKER_USER}" + "/" + "${APP_NAME}"
+     IMAGE_TAG = "${RELEASE}-${BUILD_NUMBER}"
+   }
    stages {
      stage("Cleanup Workspace") {
        steps {
@@ -25,22 +25,12 @@
          git branch: 'main', credentialsId: 'github', url: 'https://github.com/yazicigurkan/register-app'
        }
      }
-     stage("Build Application") {
-       steps {
-         sh "mvn clean package"
-       }
 
-     }
-     stage("Test Application") {
+     stage("OWASP Dependency Check") {
        steps {
-         sh "mvn test"
+         sh "mvn org.owasp:dependency-check-maven:check"
        }
      }
-     stage("OWASP Dependency Check") {
- 	steps {
-     sh "mvn org.owasp:dependency-check-maven:check"
-     }
-      }	   
      stage("SonarQube Analysis") {
        steps {
          script {
@@ -58,6 +48,18 @@
        }
 
      }
+     stage("Build Application") {
+       steps {
+         sh "mvn clean package"
+       }
+
+     }
+     stage("Test Application") {
+       steps {
+         sh "mvn test"
+       }
+     }
+
      stage("Build & Push Docker Image") {
        steps {
          script {
@@ -72,47 +74,59 @@
          }
        }
      }
-    stage("Trivy Scan") {
-           steps {
-               script {
-	            sh ('docker run -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image grknyzc53/register-app-pipeline:latest --no-progress --scanners vuln  --exit-code 0 --severity HIGH,CRITICAL --format table')
-               }
+     stage("Trivy Scan") {
+       steps {
+         script {
+           sh('docker run -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image grknyzc53/register-app-pipeline:latest --no-progress --scanners vuln  --exit-code 0 --severity HIGH,CRITICAL --format table')
+         }
+       }
+     }
+
+     stage('Cleanup Artifacts') {
+       steps {
+         script {
+           sh "docker rmi ${IMAGE_NAME}:${IMAGE_TAG}"
+           sh "docker rmi ${IMAGE_NAME}:latest"
+         }
+       }
+     }
+     stage('Update Manifest Repo for GitOps') {
+       steps {
+         withCredentials([string(credentialsId: 'jenkins-manifest-github-token', variable: 'GITHUB_TOKEN')]) {
+           script {
+             def repoDir = "manifests-repo"
+             def repoUrl = "https://yazicigurkan:${GITHUB_TOKEN}@github.com/yazicigurkan/register-app-manifests.git"
+             def newImage = "${IMAGE_NAME}:${IMAGE_TAG}" // örnek: grknyzc53/register-app-pipeline:1.0.0-13
+
+             sh ""
+             "
+             git config--global user.email "gurkan.yazici.53@icloud.com"
+             git config--global user.name "yazicigurkan"
+
+             rm - rf $ {
+               repoDir
+             }
+             git clone $ {
+               repoUrl
+             }
+             $ {
+               repoDir
+             }
+
+             cd $ {
+               repoDir
+             }
+             sed - i 's|image:.*|image: ${newImage}|'
+             deployment.yaml
+
+             git add deployment.yaml
+             git commit - m "Update image to ${newImage} [Jenkins CI]"
+             git push origin main
+               ""
+             "
            }
+         }
        }
-
-       stage ('Cleanup Artifacts') {
-           steps {
-               script {
-                    sh "docker rmi ${IMAGE_NAME}:${IMAGE_TAG}"
-                    sh "docker rmi ${IMAGE_NAME}:latest"
-               }
-          }
-       }
-	stage('Update Manifest Repo for GitOps') {
-  steps {
-    withCredentials([string(credentialsId: 'jenkins-manifest-github-token', variable: 'GITHUB_TOKEN')]) {
-      script {
-        def repoDir = "manifests-repo"
-        def repoUrl = "https://yazicigurkan:${GITHUB_TOKEN}@github.com/yazicigurkan/register-app-manifests.git"
-        def newImage = "${IMAGE_NAME}:${IMAGE_TAG}"  // örnek: grknyzc53/register-app-pipeline:1.0.0-13
-
-        sh """
-          git config --global user.email "gurkan.yazici.53@icloud.com"
-          git config --global user.name "yazicigurkan"
-
-          rm -rf ${repoDir}
-          git clone ${repoUrl} ${repoDir}
-
-          cd ${repoDir}
-          sed -i 's|image:.*|image: ${newImage}|' deployment.yaml
-
-          git add deployment.yaml
-          git commit -m "Update image to ${newImage} [Jenkins CI]"
-          git push origin main
-        """
-      }
-    }
-  }
-}
+     }
    }
  }
