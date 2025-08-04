@@ -102,14 +102,11 @@ pipeline {
 
           // ZAP taraması yap (JSON + HTML raporları oluşturulur)
           sh """
-            docker run --rm \
-              --network host \
-              -v \$PWD:/zap/wrk/:rw \
-              owasp/zap2docker-stable zap-baseline.py \
-              -t http://localhost:8080 \
-              -r zap_report.html \
-              -J zap_report.json \
-              -m 0
+            docker run --rm --network host \
+  -v /home/adem_yazici/workspace/register-app-ci:/zap/wrk/:rw \
+  owasp/zap2docker-weekly zap-baseline.py \
+  -t http://localhost:8080 \
+  -r zap_report.html -J zap_report.json -m 0
           """
 
           // Raporu oku ve kritik açık varsa pipeline'ı durdur
